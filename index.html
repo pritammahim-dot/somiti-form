@@ -254,7 +254,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const GOOGLE_SCRIPT_URL='YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE';
+const GOOGLE_SCRIPT_URL='https://script.google.com/macros/s/AKfycbznKWMoKHOCemJKJkfgvv7d_R3Dk005yJJfcHoLA_7bbxxKtU6AEM8gBsoMeNRpxTz-3g/exec';
 const BKASH_NUMBER='০১৭১১XXXXXXXX';
 const FEE_GENERAL=2000;
 const FEE_LIFE=10000;
@@ -412,7 +412,7 @@ async function submitPayment(){
   document.getElementById('payBtn').textContent='অপেক্ষা করুন...';
   st.className='status-msg info';st.textContent='ডাটা সংরক্ষণ হচ্ছে...';
 
-  if(GOOGLE_SCRIPT_URL&&GOOGLE_SCRIPT_URL!=='YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE'){
+  if(GOOGLE_SCRIPT_URL&&GOOGLE_SCRIPT_URL!=='https://script.google.com/macros/s/AKfycbznKWMoKHOCemJKJkfgvv7d_R3Dk005yJJfcHoLA_7bbxxKtU6AEM8gBsoMeNRpxTz-3g/exec'){
     try{
       await fetch(GOOGLE_SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(formData)});
       showSuccess();
