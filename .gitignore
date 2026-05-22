@@ -1,0 +1,17 @@
+# Admin panel — local-only, not for public hosting
+admin.html
+
+# Reference / sample files — local-only
+*.pdf
+*.docx
+*.xlsx
+*.xls
+Apscript URL.txt
+
+# Editor / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
