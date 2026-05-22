@@ -154,7 +154,7 @@
 
       <div class="section-label">জন্ম ও পরিচয়</div>
       <div class="row">
-        <div class="field-group"><label><span class="serial">৫</span> জন্ম তারিখ <span class="required">*</span></label><input type="date" id="dob" required></div>
+        <div class="field-group"><label><span class="serial">৫</span> জন্ম তারিখ <span class="required">*</span></label><input type="text" id="dob" required placeholder="dd/mm/yyyy"></div>
         <div class="field-group"><label><span class="serial">৬</span> রক্তের গ্রুপ <span class="required">*</span></label>
           <select id="bloodGroup" required><option value="">— নির্বাচন —</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
         <div class="field-group"><label><span class="serial">৭</span> জাতীয়তা <span class="required">*</span></label><input type="text" id="nationality" value="বাংলাদেশী" required data-lang="bn"><div class="warn-text" id="warn_nationality">অনুগ্রহ করে বাংলায় লিখুন</div></div>
@@ -175,7 +175,7 @@
 
       <div class="section-label">পেশা ও যোগাযোগ</div>
       <div class="row">
-        <div class="field-group"><label><span class="serial">১৩</span> অবসরের তারিখ (PRL) <span class="required">*</span></label><input type="date" id="retireDate" required></div>
+        <div class="field-group"><label><span class="serial">১৩</span> অবসরের তারিখ (PRL) <span class="required">*</span></label><input type="text" id="retireDate" required placeholder="dd/mm/yyyy"></div>
         <div class="field-group"><label>&emsp; অবসরকালীন পদবী <span class="required">*</span></label><input type="text" id="retiredPost" required placeholder="অবসরকালীন পদবী" data-lang="bn"><div class="warn-text" id="warn_retiredPost">অনুগ্রহ করে বাংলায় লিখুন</div></div>
         <div class="field-group"><label><span class="serial">১৪</span> মোবাইল নং <span class="required">*</span></label><input type="tel" id="mobile" required placeholder="০১XXXXXXXXX"></div>
       </div>
@@ -257,8 +257,8 @@
 // ═══ CONFIG ═══
 const GOOGLE_SCRIPT_URL='https://script.google.com/macros/s/AKfycbzsb1538PziGvgM5NZoaPjn94QN0l9lvZSGZ42w-932qfuB7FOUVuMx8BzKBxoPh80osw/exec';
 const BKASH_NUMBER='০১৭১১-২২০৪৩০';
-const FEE_GENERAL=500;
-const FEE_LIFE=5000;
+const FEE_GENERAL=510;
+const FEE_LIFE=5100;
 
 let formData=null;
 
@@ -348,7 +348,7 @@ document.getElementById('appForm').addEventListener('submit',function(e){
   showPreview();
 });
 
-function fdt(ds){if(!ds)return'';const d=new Date(ds);if(isNaN(d))return ds;const bn=n=>String(n).replace(/[0-9]/g,c=>'০১২৩৪৫৬৭৮৯'[c]);const m=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];return bn(d.getDate())+' '+m[d.getMonth()]+' '+bn(d.getFullYear());}
+function fdt(ds){if(!ds)return'';const bn=n=>String(n).replace(/[0-9]/g,c=>'০১২৩৪৫৬৭৮৯'[c]);if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(ds).trim()))return bn(String(ds).trim());const d=new Date(ds);if(isNaN(d))return ds;const m=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];return bn(d.getDate())+' '+m[d.getMonth()]+' '+bn(d.getFullYear());}
 function bnNum(n){return String(n).replace(/[0-9]/g,c=>'০১২৩৪৫৬৭৮৯'[c]);}
 
 function showPreview(){
@@ -386,7 +386,7 @@ function showPreview(){
     </table>`;
 
   // Payment section
-  const feeLabel=D.membershipType==='আজীবন'?'আজীবন সদস্যপদ ৳'+bnNum(fee)+' টাকা (এককালীন)':'সাধারণ সদস্যপদ আবেদন ফি ৳'+bnNum(fee)+' টাকা (রিনিউ ফি ৳'+bnNum(500)+' প্রতি বছর)';
+  const feeLabel=D.membershipType==='আজীবন'?'আজীবন সদস্যপদ ৳'+bnNum(fee)+' টাকা (এককালীন)':'সাধারণ সদস্যপদ আবেদন ফি ৳'+bnNum(fee)+' টাকা (রিনিউ ফি ৳'+bnNum(FEE_GENERAL)+' প্রতি বছর)';
   document.getElementById('paymentInstruction').innerHTML=
     `আবেদনটি সফলভাবে সম্পন্ন করতে <strong>${BKASH_NUMBER}</strong> নম্বরে <strong>${bnNum(fee)}</strong> টাকা বিকাশে সেন্ড মানি করুন।<br>রেফারেন্স ঘরে আপনার নাম লিখুন।<br>অতঃপর আপনার ট্রাঞ্জ্যাকশন আইডি (TrxID) টি যথাযথভাবে নিচের ঘরে প্রবেশ করুন।<br><em style="color:#B71C1C;">ট্রাঞ্জ্যাকশন আইডি (TrxID) ভুল হলে পেমেন্ট ভেরিফিকেশন সম্ভব হবে না।</em>`;
   document.getElementById('paymentAmount').innerHTML='<div>'+feeLabel+'</div>';
