@@ -55,6 +55,8 @@
   .upload-area .hint{font-size:.78rem;color:var(--text-light);margin-top:4px;}
   .upload-area .rec{font-size:.72rem;color:var(--accent);font-weight:600;margin-top:2px;}
   .upload-area .remove-btn{display:none;margin-top:6px;padding:4px 14px;font-size:.78rem;background:#FFEBEE;color:var(--red);border:1px solid #EF9A9A;border-radius:4px;cursor:pointer;border:1px solid #EF9A9A;}
+  .upload-area .upload-error{display:none;margin-top:8px;padding:6px 10px;font-size:.8rem;color:var(--red);font-weight:600;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:4px;text-align:left;line-height:1.4;}
+  .upload-area .upload-loading{display:none;margin-top:6px;font-size:.8rem;color:var(--accent);font-weight:600;}
   .warn-text{font-size:.75rem;color:var(--red);margin-top:2px;display:none;}
 
   /* Preview */
@@ -102,23 +104,25 @@
         <div class="field-group">
           <label>পাসপোর্ট সাইজ ছবি <span class="required">*</span></label>
           <div class="upload-area" id="photoArea">
-            <div>📷 ক্লিক করে ছবি আপলোড করুন</div>
-            <div class="hint">JPG/PNG, সর্বোচ্চ ২MB</div>
-            <div class="rec">Recommended: 300×475 px</div>
-            <input type="file" id="photoFile" accept="image/jpeg,image/png" onchange="handleUpload(this,'photoPreview','photoArea')">
+            <div class="upload-prompt">📷 ক্লিক করে ছবি আপলোড করুন</div>
+            <div class="hint">ফোনের ছবি সরাসরি আপলোড করুন — এডিট করার প্রয়োজন নেই।</div>
+            <div class="rec">অন্তত ৩০০×৩০০ পিক্সেল, সর্বোচ্চ ১৫MB</div>
+            <input type="file" id="photoFile" accept="image/*" capture="environment" onchange="handleUpload(this,'photoPreview','photoArea')">
             <img class="preview" id="photoPreview">
             <button type="button" class="remove-btn" onclick="clearUpload('photoFile','photoPreview','photoArea')">✕ মুছুন</button>
+            <div class="upload-error" id="photoError"></div>
           </div>
         </div>
         <div class="field-group">
           <label>স্বাক্ষর <span class="required">*</span></label>
           <div class="upload-area" id="sigArea">
-            <div>✍️ ক্লিক করে স্বাক্ষর আপলোড করুন</div>
-            <div class="hint">সাদা কাগজে স্বাক্ষর করে ছবি তুলুন</div>
-            <div class="rec">Recommended: 300×80 px</div>
-            <input type="file" id="sigFile" accept="image/jpeg,image/png" onchange="handleUpload(this,'sigPreview','sigArea')">
+            <div class="upload-prompt">✍️ ক্লিক করে স্বাক্ষর আপলোড করুন</div>
+            <div class="hint">সাদা কাগজে স্বাক্ষর করে ছবি তুলুন।</div>
+            <div class="rec">অন্তত ৩০০×৮০ পিক্সেল, সর্বোচ্চ ১৫MB</div>
+            <input type="file" id="sigFile" accept="image/*" capture="environment" onchange="handleUpload(this,'sigPreview','sigArea')">
             <img class="preview sig-preview" id="sigPreview">
             <button type="button" class="remove-btn" onclick="clearUpload('sigFile','sigPreview','sigArea')">✕ মুছুন</button>
+            <div class="upload-error" id="sigError"></div>
           </div>
         </div>
       </div>
@@ -280,20 +284,66 @@ document.querySelectorAll('[data-lang]').forEach(el=>{
 });
 
 // ═══ Upload ═══
-function compressImg(file,mw,mh,q){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');let w=img.width,h=img.height;if(w>mw){h=h*mw/w;w=mw;}if(h>mh){w=w*mh/h;h=mh;}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',q));};img.onerror=rej;img.src=e.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
-async function handleUpload(inp,pid,aid){const f=inp.files[0];if(!f)return;if(f.size>2*1024*1024){alert('ফাইল সাইজ ২MB এর বেশি।');inp.value='';return;}
-  const mw=pid==='photoPreview'?300:400,mh=pid==='photoPreview'?475:150;
-  const d=await compressImg(f,mw,mh,0.8);const p=document.getElementById(pid);p.src=d;p.style.display='block';
+// Decode any browser-supported image (HEIC/WebP/JPG/PNG/...) to dimensions+dataURL via canvas. Output always JPEG.
+function decodeImg(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>res({img,w:img.naturalWidth,h:img.naturalHeight});img.onerror=()=>rej(new Error('decode'));img.src=e.target.result;};r.onerror=()=>rej(new Error('read'));r.readAsDataURL(file);});}
+function compressTo(img,mw,mh,q){const c=document.createElement('canvas');let w=img.naturalWidth,h=img.naturalHeight;if(w>mw){h=h*mw/w;w=mw;}if(h>mh){w=w*mh/h;h=mh;}c.width=Math.round(w);c.height=Math.round(h);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q);}
+
+// Limits — see commit message
+const UPLOAD_LIMITS={
+  photo:{minW:300,minH:300,maxBytes:15*1024*1024,outW:300,outH:475,label:'ছবি',hint:'অন্তত ৩০০×৩০০ পিক্সেল'},
+  sig:{minW:300,minH:80,maxBytes:15*1024*1024,outW:400,outH:150,label:'স্বাক্ষর',hint:'অন্তত ৩০০×৮০ পিক্সেল'}
+};
+
+function showUploadError(aid,msg){
+  const errEl=document.getElementById(aid==='photoArea'?'photoError':'sigError');
+  errEl.textContent=msg;errEl.style.display='block';
+  document.getElementById(aid).style.borderColor='#B71C1C';
+}
+function clearUploadError(aid){
+  const errEl=document.getElementById(aid==='photoArea'?'photoError':'sigError');
+  errEl.textContent='';errEl.style.display='none';
+}
+
+async function handleUpload(inp,pid,aid){
+  const f=inp.files[0];if(!f)return;
+  const kind=pid==='photoPreview'?'photo':'sig',L=UPLOAD_LIMITS[kind];
+  clearUploadError(aid);
+
+  if(f.size>L.maxBytes){
+    showUploadError(aid,`${L.label}টি অনেক বড় (${(f.size/1024/1024).toFixed(1)} MB)। সর্বোচ্চ ১৫ MB পর্যন্ত আপলোড করুন।`);
+    inp.value='';return;
+  }
+
+  let decoded;
+  try{decoded=await decodeImg(f);}
+  catch(e){
+    showUploadError(aid,`${L.label}টি পড়া যাচ্ছে না। অন্য ছবি চেষ্টা করুন।`);
+    inp.value='';return;
+  }
+
+  if(decoded.w<L.minW||decoded.h<L.minH){
+    showUploadError(aid,`${L.label}টির রেজোলিউশন অনেক কম (${decoded.w}×${decoded.h})। ${L.hint} এর ছবি আপলোড করুন।`);
+    inp.value='';return;
+  }
+
+  const d=compressTo(decoded.img,L.outW,L.outH,0.85);
+  const p=document.getElementById(pid);p.src=d;p.style.display='block';
   document.querySelector('#'+aid+' .remove-btn').style.display='inline-block';
-  document.querySelector('#'+aid+' div:first-child').style.display='none';
+  document.querySelector('#'+aid+' .upload-prompt').style.display='none';
   document.querySelector('#'+aid+' .hint').style.display='none';
   document.querySelector('#'+aid+' .rec').style.display='none';
-  document.getElementById(aid).style.borderColor='';}
-function clearUpload(iid,pid,aid){document.getElementById(iid).value='';const p=document.getElementById(pid);p.src='';p.style.display='none';
+  document.getElementById(aid).style.borderColor='';
+}
+
+function clearUpload(iid,pid,aid){
+  document.getElementById(iid).value='';
+  const p=document.getElementById(pid);p.src='';p.style.display='none';
   document.querySelector('#'+aid+' .remove-btn').style.display='none';
-  document.querySelector('#'+aid+' div:first-child').style.display='';
+  document.querySelector('#'+aid+' .upload-prompt').style.display='';
   document.querySelector('#'+aid+' .hint').style.display='';
-  document.querySelector('#'+aid+' .rec').style.display='';}
+  document.querySelector('#'+aid+' .rec').style.display='';
+  clearUploadError(aid);
+}
 
 // ═══ Form Submit → Preview ═══
 document.getElementById('appForm').addEventListener('submit',function(e){
