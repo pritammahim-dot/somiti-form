@@ -26,6 +26,8 @@
   .required{color:var(--red);margin-left:2px;}
   input[type="text"],input[type="email"],input[type="tel"],input[type="number"],input[type="date"],select,textarea{width:100%;padding:10px 14px;font-family:'Noto Sans Bengali',sans-serif;font-size:.95rem;color:var(--text);background:var(--input-bg);border:1.5px solid var(--input-border);border-radius:var(--radius);transition:border-color .2s,box-shadow .2s;}
   input:focus,select:focus,textarea:focus{outline:none;border-color:var(--input-focus);box-shadow:0 0 0 3px rgba(46,125,50,.12);}
+  input.field-error,select.field-error,textarea.field-error{background:#FDECEA;border-color:#E57373;}
+  input.field-error:focus,select.field-error:focus,textarea.field-error:focus{border-color:#C62828;box-shadow:0 0 0 3px rgba(229,57,53,.15);}
   textarea{resize:vertical;min-height:70px;}
   .row{display:flex;gap:14px;}.row>.field-group{flex:1;}
   @media(max-width:600px){.row{flex-direction:column;gap:0;}.container{padding:12px 8px 40px;}.header{padding:20px 14px 16px;}.header h1{font-size:1.25rem;}.form-card{padding:18px 14px;}}
@@ -269,18 +271,24 @@ let formData=null;
 function toggleMT(el){document.querySelectorAll('.membership-toggle label').forEach(l=>l.classList.remove('active'));el.classList.add('active');el.previousElementSibling.checked=true;}
 
 // ═══ Language Validation ═══
-function isBangla(str){if(!str.trim())return true;const clean=str.replace(/[\s\d\-\.\,\(\)\/\:।]/g,'');if(!clean)return true;return/^[\u0980-\u09FF]+$/.test(clean);}
-function isEnglish(str){if(!str.trim())return true;const clean=str.replace(/[\s\d\-\.\,\(\)\/\:]/g,'');if(!clean)return true;return/^[A-Za-z]+$/.test(clean);}
+function isBangla(str){if(!str.trim())return true;const clean=str.replace(/[\s\d\-\.\,\(\)\/\:।\+\&\;\*\#\'\"]/g,'');if(!clean)return true;return/^[\u0980-\u09FF]+$/.test(clean);}
+function isEnglish(str){if(!str.trim())return true;const clean=str.replace(/[\s\d\-\.\,\(\)\/\:\+\&\;\*\#\'\"]/g,'');if(!clean)return true;return/^[A-Za-z]+$/.test(clean);}
 
-// Live validation on input
+// Live validation on input — clears error state as soon as user fixes it
 document.querySelectorAll('[data-lang]').forEach(el=>{
   el.addEventListener('input',function(){
     const lang=this.dataset.lang,val=this.value,warn=document.getElementById('warn_'+this.id);
-    if(!warn)return;
-    if(lang==='bn'&&!isBangla(val)){warn.style.display='block';this.style.borderColor='#B71C1C';}
-    else if(lang==='en'&&!isEnglish(val)){warn.style.display='block';this.style.borderColor='#B71C1C';}
-    else{warn.style.display='none';this.style.borderColor='';}
+    const ok=lang==='bn'?isBangla(val):isEnglish(val);
+    if(!ok){if(warn)warn.style.display='block';this.classList.add('field-error');}
+    else{if(warn)warn.style.display='none';this.classList.remove('field-error');}
   });
+});
+// Required-field live clear (for fields without language validation):
+// as soon as user types/picks a value, remove the error state. data-lang fields
+// are handled above; clearing them here would override language errors.
+document.querySelectorAll('#appForm [required]:not([data-lang])').forEach(el=>{
+  const clear=function(){if(this.value&&this.value.trim())this.classList.remove('field-error');};
+  el.addEventListener('input',clear);el.addEventListener('change',clear);
 });
 
 // ═══ Upload ═══
@@ -351,23 +359,39 @@ document.getElementById('appForm').addEventListener('submit',function(e){
   const st=document.getElementById('formStatus');
   let valid=true;
 
-  // Required fields
-  this.querySelectorAll('[required]').forEach(f=>{if(!f.value.trim()){f.style.borderColor='#B71C1C';valid=false;}else if(!f.style.borderColor||f.style.borderColor!=='rgb(183, 28, 28)'){f.style.borderColor='';}});
+  // Clear ALL previous error states first — only fields that fail THIS submit get re-marked
+  this.querySelectorAll('.field-error').forEach(f=>f.classList.remove('field-error'));
+  this.querySelectorAll('[style*="border-color"]').forEach(f=>{f.style.borderColor='';});
+  document.getElementById('photoArea').style.borderColor='';
+  document.getElementById('sigArea').style.borderColor='';
+  document.querySelectorAll('.warn-text').forEach(w=>w.style.display='none');
 
-  // Photo & Sig
+  const errorFields=[];
+
+  // Required fields — mark only the ones that are actually empty
+  this.querySelectorAll('[required]').forEach(f=>{
+    if(!f.value.trim()){f.classList.add('field-error');valid=false;errorFields.push(f);}
+  });
+
+  // Photo & Sig (these are upload boxes, keep border styling)
   const pp=document.getElementById('photoPreview'),sp=document.getElementById('sigPreview');
-  if(!pp.src||pp.style.display==='none'){document.getElementById('photoArea').style.borderColor='#B71C1C';valid=false;}
-  if(!sp.src||sp.style.display==='none'){document.getElementById('sigArea').style.borderColor='#B71C1C';valid=false;}
+  if(!pp.src||pp.style.display==='none'){document.getElementById('photoArea').style.borderColor='#B71C1C';valid=false;errorFields.push(document.getElementById('photoArea'));}
+  if(!sp.src||sp.style.display==='none'){document.getElementById('sigArea').style.borderColor='#B71C1C';valid=false;errorFields.push(document.getElementById('sigArea'));}
 
-  // Language validation
+  // Language validation — only mark fields where the typed value is wrong language
   let langOk=true;
   document.querySelectorAll('[data-lang]').forEach(el=>{
     const v=el.value;if(!v.trim())return;
-    if(el.dataset.lang==='bn'&&!isBangla(v)){langOk=false;el.style.borderColor='#B71C1C';const w=document.getElementById('warn_'+el.id);if(w)w.style.display='block';}
-    if(el.dataset.lang==='en'&&!isEnglish(v)){langOk=false;el.style.borderColor='#B71C1C';const w=document.getElementById('warn_'+el.id);if(w)w.style.display='block';}
+    const bad=(el.dataset.lang==='bn'&&!isBangla(v))||(el.dataset.lang==='en'&&!isEnglish(v));
+    if(bad){langOk=false;el.classList.add('field-error');const w=document.getElementById('warn_'+el.id);if(w)w.style.display='block';errorFields.push(el);}
   });
 
-  if(!valid||!langOk){st.className='status-msg error';st.textContent='অনুগ্রহ করে সকল প্রয়োজনীয় ঘর সঠিকভাবে পূরণ করুন।';return;}
+  if(!valid||!langOk){
+    st.className='status-msg error';st.textContent='অনুগ্রহ করে সকল প্রয়োজনীয় ঘর সঠিকভাবে পূরণ করুন।';
+    // Scroll to the first error field so the applicant can see what to fix
+    if(errorFields.length){errorFields[0].scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>{try{errorFields[0].focus({preventScroll:true});}catch(e){}},400);}
+    return;
+  }
 
   formData={
     membershipType:document.querySelector('input[name="membershipType"]:checked').value,
