@@ -460,7 +460,7 @@ function showPreview(){
     </table>`;
 
   // Payment section
-  const feeLabel=D.membershipType==='আজীবন'?'আজীবন সদস্যপদ ৳'+bnNum(fee)+' টাকা (এককালীন)':'সাধারণ সদস্যপদ আবেদন ফি ৳'+bnNum(fee)+' টাকা (রিনিউ ফি ৳'+bnNum(FEE_GENERAL)+' প্রতি বছর)';
+  const feeLabel=D.membershipType==='আজীবন'?'আজীবন সদস্যপদ ৳'+bnNum(fee)+'/- টাকা (বিকাশ ফি সহ, এককালীন)':'সাধারণ সদস্যপদ আবেদন ফি ৳'+bnNum(fee)+'/- টাকা (বিকাশ ফি সহ) (রিনিউ ফি ৳'+bnNum(FEE_GENERAL)+' প্রতি বছর)';
   document.getElementById('paymentInstruction').innerHTML=
     `আবেদনটি সফলভাবে সম্পন্ন করতে <strong>${BKASH_NUMBER}</strong> নম্বরে <strong>${bnNum(fee)}</strong> টাকা বিকাশে সেন্ড মানি করুন।<br>রেফারেন্স ঘরে আপনার নাম লিখুন।<br>অতঃপর আপনার ট্রাঞ্জ্যাকশন আইডি (TrxID) টি যথাযথভাবে নিচের ঘরে প্রবেশ করুন।<br><em style="color:#B71C1C;">ট্রাঞ্জ্যাকশন আইডি (TrxID) ভুল হলে পেমেন্ট ভেরিফিকেশন সম্ভব হবে না।</em>`;
   document.getElementById('paymentAmount').innerHTML='<div>'+feeLabel+'</div>';
